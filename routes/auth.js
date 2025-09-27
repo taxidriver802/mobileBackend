@@ -2,11 +2,20 @@ import express from "express";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import User from "../models/User.js";
+import auth from "../middleware/auth.js";
 
 const router = express.Router();
 
 router.post("/register", async (req, res) => {
-  const { username, password } = req.body;
+  const { username, password, fullName } = req.body;
+  console.log(fullName);
+  
+  console.log('[server] POST /api/auth/register', { username, fullName: fullName ? '<provided>' : '<missing>' });
+
+  // Basic validation
+  if (!fullName || !username || !password) {
+    return res.status(400).json({ error: 'Name, username and password are required' });
+  }
 
   try {
     // Check if user already exists
@@ -17,10 +26,13 @@ router.post("/register", async (req, res) => {
 
     // Hash password and save
     const hashedPassword = await bcrypt.hash(password, 10);
-    const newUser = new User({ username, password: hashedPassword });
-    await newUser.save();
+    const newUser = new User({ fullName, username, password: hashedPassword });
+    const saved = await newUser.save();
 
-    res.status(201).json({ message: "User registered successfully" });
+    console.log('[server] user created', { id: saved._id, username: saved.username, fullName: saved.fullName });
+
+    // Return created user (minimal) to the client
+    res.status(201).json({ user: { id: saved._id, username: saved.username, fullName: saved.fullName } });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Server error" });
@@ -47,5 +59,24 @@ router.post("/login", async (req, res) => {
     res.status(500).json({ error: "Server error" });
   }
 });
+
+router.get("/me", auth, async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id).select("_id fullName username profilePic");
+    if (!user) return res.status(404).json({ error: "User not found" });
+
+    res.json({
+      id: user._id,
+      fullName: user.fullName,
+      username: user.username,
+      profilePic: user.profilePic || "",
+    });
+  } catch (err) {
+    console.error("Error in /me:", err);
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
+
 
 export default router;
