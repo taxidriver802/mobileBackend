@@ -8,9 +8,6 @@ const router = express.Router();
 
 router.post("/register", async (req, res) => {
   const { username, password, fullName } = req.body;
-  console.log(fullName);
-  
-  console.log('[server] POST /api/auth/register', { username, fullName: fullName ? '<provided>' : '<missing>' });
 
   // Basic validation
   if (!fullName || !username || !password) {
@@ -28,8 +25,6 @@ router.post("/register", async (req, res) => {
     const hashedPassword = await bcrypt.hash(password, 10);
     const newUser = new User({ fullName, username, password: hashedPassword });
     const saved = await newUser.save();
-
-    console.log('[server] user created', { id: saved._id, username: saved.username, fullName: saved.fullName });
 
     // Return created user (minimal) to the client
     res.status(201).json({ user: { id: saved._id, username: saved.username, fullName: saved.fullName } });
@@ -76,6 +71,51 @@ router.get("/me", auth, async (req, res) => {
     res.status(500).json({ error: "Server error" });
   }
 });
+
+router.patch("/me", auth, async (req, res) => {
+  try {
+    const { username, fullName, profilePic } = req.body;
+
+    
+    const update = {};
+    if (typeof username === "string") update.username = username.trim();
+    if (typeof fullName === "string") update.fullName = fullName.trim();
+    if (typeof profilePic === "string") update.profilePic = profilePic.trim();
+
+    // If attempting to change username, ensure it's not taken by someone else
+    if (update.username) {
+      const taken = await User.findOne({
+        username: update.username,
+        _id: { $ne: req.user.id },
+      }).lean();
+      if (taken) {
+        return res.status(409).json({ error: "Username already exists" });
+      }
+    }
+
+    const updated = await User.findByIdAndUpdate(
+      req.user.id,
+      { $set: update },
+      { new: true, runValidators: true }
+    ).select("_id fullName username profilePic");
+
+    if (!updated) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    res.json({
+      id: updated._id,
+      fullName: updated.fullName,
+      username: updated.username,
+      profilePic: updated.profilePic || "",
+    });
+  } catch (err) {
+    console.error("Error in PATCH /me:", err);
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
+
 
 
 
