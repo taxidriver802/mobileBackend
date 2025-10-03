@@ -1,95 +1,139 @@
-import express from "express";
-import auth from "../middleware/auth.js";
-import Goal from "../models/Goals.js";
+import express from 'express';
+import mongoose from 'mongoose';
+import Goal from '../models/Goals.js';      
+import auth from '../middleware/auth.js';  
 
 const router = express.Router();
 
-router.get("/", auth, async (req, res) => {
+router.use(auth);
+
+er.get('/', async (req, res) => {
   try {
-    const goals = await Goal.find({ user: req.user.id })
-      .sort({ createdAt: -1 })
-      .lean();
-    res.json(goals);
+    const goals = await Goal.find({ user: req.user.id }).sort({ createdAt: -1 });
+    return res.json(goals);
   } catch (err) {
-    console.error("GET /goals error:", err);
-    res.status(500).json({ error: "Server error" });
+    console.error('[goals.list] unexpected:', err);
+    return res.status(500).json({ error: 'Failed to list goals' });
   }
 });
 
-router.post("/", auth, async (req, res) => {
+
+router.post('/', async (req, res) => {
   try {
-    const { title, description } = req.body;
-    if (!title || !description) {
-      return res.status(400).json({ error: "title and description are required" });
+    const { title, description = '' } = req.body || {};
+    if (typeof title !== 'string' || !title.trim()) {
+      return res.status(400).json({ error: 'Title is required' });
     }
 
     const goal = await Goal.create({
       title: title.trim(),
-      description: description.trim(),
+      description: typeof description === 'string' ? description.trim() : '',
       user: req.user.id,
+      // completed defaults to false via schema
     });
 
-    res.status(201).json(goal);
+    return res.status(201).json(goal);
   } catch (err) {
-    console.error("POST /goals error:", err);
-    res.status(500).json({ error: "Server error" });
+    if (err?.name === 'ValidationError') {
+      return res.status(400).json({ error: err.message });
+    }
+    console.error('[goals.create] unexpected:', err);
+    return res.status(500).json({ error: 'Failed to create goal' });
   }
 });
 
-router.get("/:id", auth, async (req, res) => {
+router.patch('/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    if (!mongoose.isValidObjectId(id)) return res.status(400).json({ error: "Invalid id" });
 
-    const goal = await Goal.findOne({ _id: id, user: req.user.id }).lean();
-    if (!goal) return res.status(404).json({ error: "Goal not found" });
+    if (!mongoose.isValidObjectId(id)) {
+      return res.status(400).json({ error: 'Invalid goal id' });
+    }
 
-    res.json(goal);
-  } catch (err) {
-    console.error("GET /goals/:id error:", err);
-    res.status(500).json({ error: "Server error" });
-  }
-});
+    // Whitelist & normalize
+    const allowed = {};
+    if (typeof req.body.title === 'string') {
+      const v = req.body.title.trim();
+      if (!v) return res.status(400).json({ error: 'Title cannot be empty' });
+      allowed.title = v;
+    }
+    if (typeof req.body.description === 'string') {
+      allowed.description = req.body.description.trim();
+    }
+    if (typeof req.body.completed === 'boolean') {
+      allowed.completed = req.body.completed;
+    }
 
-router.patch("/:id", auth, async (req, res) => {
-  try {
-    const { id } = req.params;
-    if (!mongoose.isValidObjectId(id)) return res.status(400).json({ error: "Invalid id" });
-
-    const update = {};
-    if (typeof req.body.title === "string") update.title = req.body.title.trim();
-    if (typeof req.body.description === "string") update.description = req.body.description.trim();
-    if (typeof req.body.completed === "boolean") update.completed = req.body.completed;
+    // Business rule: any content edit resets completion
+    if ('title' in allowed || 'description' in allowed) {
+      allowed.completed = false;
+    }
 
     const updated = await Goal.findOneAndUpdate(
       { _id: id, user: req.user.id },
-      { $set: update },
+      { $set: allowed },
       { new: true, runValidators: true }
     );
 
-    if (!updated) return res.status(404).json({ error: "Goal not found" });
+    if (!updated) {
+      return res.status(404).json({ error: 'Goal not found' });
+    }
 
-    res.json(updated);
+    return res.json(updated);
   } catch (err) {
-    console.error("PATCH /goals/:id error:", err);
-    res.status(500).json({ error: "Server error" });
+    if (err?.name === 'ValidationError' || err?.name === 'CastError') {
+      return res.status(400).json({ error: err.message });
+    }
+    console.error('[goals.update] unexpected:', err);
+    return res.status(500).json({ error: 'Failed to update goal' });
   }
 });
 
-router.delete("/:id", auth, async (req, res) => {
+
+router.patch('/:id/complete', async (req, res) => {
   try {
     const { id } = req.params;
-    if (!mongoose.isValidObjectId(id)) return res.status(400).json({ error: "Invalid id" });
+    if (!mongoose.isValidObjectId(id)) {
+      return res.status(400).json({ error: 'Invalid goal id' });
+    }
 
-    const deleted = await Goal.findOneAndDelete({ _id: id, user: req.user.id });
-    if (!deleted) return res.status(404).json({ error: "Goal not found" });
+    if (typeof req.body.completed !== 'boolean') {
+      return res.status(400).json({ error: 'completed must be boolean' });
+    }
 
-    res.json({ ok: true });
+    const updated = await Goal.findOneAndUpdate(
+      { _id: id, user: req.user.id },
+      { $set: { completed: req.body.completed } },
+      { new: true, runValidators: true }
+    );
+    if (!updated) return res.status(404).json({ error: 'Goal not found' });
+
+    return res.json(updated);
   } catch (err) {
-    console.error("DELETE /goals/:id error:", err);
-    res.status(500).json({ error: "Server error" });
+    if (err?.name === 'ValidationError' || err?.name === 'CastError') {
+      return res.status(400).json({ error: err.message });
+    }
+    console.error('[goals.complete] unexpected:', err);
+    return res.status(500).json({ error: 'Failed to toggle completion' });
   }
 });
 
+router.delete('/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    if (!mongoose.isValidObjectId(id)) {
+      return res.status(400).json({ error: 'Invalid goal id' });
+    }
+
+    const deleted = await Goal.findOneAndDelete({ _id: id, user: req.user.id });
+    if (!deleted) return res.status(404).json({ error: 'Goal not found' });
+
+    return res.json({ ok: true });
+  } catch (err) {
+    console.error('[goals.delete] unexpected:', err);
+    return res.status(500).json({ error: 'Failed to delete goal' });
+  }
+});
 
 export default router;
