@@ -13,15 +13,10 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// Connect DB (optional)
+// Connect DB 
 if (process.env.MONGO_URI) {
-  // show (masked) MONGO_URI for debugging
-  const rawUri = process.env.MONGO_URI || '';
-  const safeUri = rawUri ? rawUri.replace(/:\/\/[^:]+:[^@]+@/, '://<user>:<pass>@') : '<not-set>';
-  console.log('[server] MONGO_URI (masked):', safeUri);
-
   // enable mongoose query debug
-  mongoose.set('debug', true);
+  mongoose.set('debug', false);
 
   // pass dbName in options so Mongoose uses the correct DB
   mongoose.connect(process.env.MONGO_URI, { dbName: DB_NAME })
