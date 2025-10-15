@@ -1,22 +1,23 @@
 import express from 'express';
 import mongoose from 'mongoose';
-import Goal from '../models/Goals.js';      
-import auth from '../middleware/auth.js';  
+import Goal from '../models/Goals.js';
+import auth from '../middleware/auth.js';
 
 const router = express.Router();
 
 router.use(auth);
 
-er.get('/', async (req, res) => {
+router.get('/', async (req, res) => {
   try {
-    const goals = await Goal.find({ user: req.user.id }).sort({ createdAt: -1 });
+    const goals = await Goal.find({ user: req.user.id }).sort({
+      createdAt: -1,
+    });
     return res.json(goals);
   } catch (err) {
     console.error('[goals.list] unexpected:', err);
     return res.status(500).json({ error: 'Failed to list goals' });
   }
 });
-
 
 router.post('/', async (req, res) => {
   try {
@@ -88,7 +89,6 @@ router.patch('/:id', async (req, res) => {
     return res.status(500).json({ error: 'Failed to update goal' });
   }
 });
-
 
 router.patch('/:id/complete', async (req, res) => {
   try {
