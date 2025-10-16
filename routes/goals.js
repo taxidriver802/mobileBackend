@@ -21,7 +21,7 @@ router.get('/', async (req, res) => {
 
 router.post('/', async (req, res) => {
   try {
-    const { title, description = '' } = req.body || {};
+    const { title, description = '', frequency } = req.body || {};
     if (typeof title !== 'string' || !title.trim()) {
       return res.status(400).json({ error: 'Title is required' });
     }
@@ -30,6 +30,7 @@ router.post('/', async (req, res) => {
       title: title.trim(),
       description: typeof description === 'string' ? description.trim() : '',
       user: req.user.id,
+      frequency: frequency,
       // completed defaults to false via schema
     });
 
