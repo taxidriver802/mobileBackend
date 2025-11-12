@@ -51,6 +51,7 @@ router.post('/register', async (req, res) => {
         fullName: saved.fullName,
         profilePic: saved.profilePic,
         createdAt: saved.createdAt,
+        highestStreak: saved.highestStreak ?? 0,
       },
     });
   } catch (err) {
@@ -83,7 +84,7 @@ router.post('/login', async (req, res) => {
 router.get('/me', auth, async (req, res) => {
   try {
     const user = await User.findById(req.user.id).select(
-      '_id fullName username profilePic'
+      '_id fullName username profilePic highestStreak createdAt updatedAt'
     );
     if (!user) return res.status(404).json({ error: 'User not found' });
 
@@ -92,6 +93,9 @@ router.get('/me', auth, async (req, res) => {
       fullName: user.fullName,
       username: user.username,
       profilePic: user.profilePic || '',
+      highestStreak: user.highestStreak ?? 0,
+      createdAt: user.createdAt,
+      updatedAt: user.updatedAt,
     });
   } catch (err) {
     console.error('Error in /me:', err);
@@ -108,7 +112,6 @@ router.patch('/me', auth, async (req, res) => {
     if (typeof fullName === 'string') update.fullName = fullName.trim();
     if (typeof profilePic === 'string') update.profilePic = profilePic.trim();
 
-    // If attempting to change username, ensure it's not taken by someone else
     if (update.username) {
       const taken = await User.findOne({
         username: update.username,
@@ -123,17 +126,20 @@ router.patch('/me', auth, async (req, res) => {
       req.user.id,
       { $set: update },
       { new: true, runValidators: true }
-    ).select('_id fullName username profilePic');
+    ).select(
+      '_id fullName username profilePic highestStreak createdAt updatedAt'
+    );
 
-    if (!updated) {
-      return res.status(404).json({ error: 'User not found' });
-    }
+    if (!updated) return res.status(404).json({ error: 'User not found' });
 
     res.json({
       id: updated._id,
       fullName: updated.fullName,
       username: updated.username,
       profilePic: updated.profilePic || '',
+      highestStreak: updated.highestStreak ?? 0,
+      createdAt: updated.createdAt,
+      updatedAt: updated.updatedAt,
     });
   } catch (err) {
     console.error('Error in PATCH /me:', err);

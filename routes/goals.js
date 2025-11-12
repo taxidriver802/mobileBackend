@@ -44,6 +44,8 @@ router.post('/', async (req, res) => {
   }
 });
 
+const FREQ = ['daily', 'weekly', 'monthly'];
+
 router.patch('/:id', async (req, res) => {
   try {
     const { id } = req.params;
@@ -66,6 +68,17 @@ router.patch('/:id', async (req, res) => {
       allowed.completed = req.body.completed;
     }
 
+    if (
+      typeof req.body.frequency === 'string' &&
+      FREQ.includes(req.body.frequency)
+    ) {
+      allowed.frequency = req.body.frequency;
+    }
+
+    if (Object.keys(allowed).length === 0) {
+      return res.status(400).json({ error: 'No valid fields to update' });
+    }
+
     // Business rule: any content edit resets completion
     if ('title' in allowed || 'description' in allowed) {
       allowed.completed = false;
@@ -75,7 +88,9 @@ router.patch('/:id', async (req, res) => {
       { _id: id, user: req.user.id },
       { $set: allowed },
       { new: true, runValidators: true }
-    );
+    )
+      .select('_id title description completed frequency createdAt updatedAt')
+      .lean();
 
     if (!updated) {
       return res.status(404).json({ error: 'Goal not found' });

@@ -7,9 +7,11 @@ const userSchema = new mongoose.Schema({
   createdAt: { type: Date, default: Date.now },
   profilePic: { type: String, default: 'default.jpg' },
   streak: { type: Number, default: 0 },
+  highestStreak: { type: Number, default: 0 },
   lastDailyCheckDate: { type: String, default: null },
   streakIncreasedForDate: { type: String, default: null },
   completionHistory: { type: Map, of: Boolean, default: {} },
+
 });
 
 export default mongoose.model('User', userSchema);

@@ -10,6 +10,7 @@ router.get('/me/streak', async (req, res) => {
   try {
     const u = await User.findById(req.user.id, {
       streak: 1,
+      highestStreak: 1,
       lastDailyCheckDate: 1,
       streakIncreasedForDate: 1,
       completionHistory: 1,
@@ -35,16 +36,22 @@ router.post('/me/streak/increment', async (req, res) => {
       // already incremented today (idempotent)
       return res.json({
         streak: u.streak,
+        highestStreak: u.highestStreak,
         streakIncreasedForDate: u.streakIncreasedForDate,
       });
     }
 
     u.streak += 1;
+    if (typeof u.highestStreak !== 'number' || u.streak > u.highestStreak) {
+      u.highestStreak = u.streak;
+    }
+
     u.streakIncreasedForDate = onDate;
     await u.save();
 
     return res.json({
       streak: u.streak,
+      highestStreak: u.highestStreak,
       streakIncreasedForDate: u.streakIncreasedForDate,
     });
   } catch (err) {
