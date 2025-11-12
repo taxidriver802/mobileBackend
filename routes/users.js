@@ -31,7 +31,7 @@ router.get('/', auth, async (req, res) => {
 
     const total = await User.countDocuments(filter);
     const users = await User.find(filter)
-      .select('_id fullName username profilePic createdAt')
+      .select('_id fullName username profilePic createdAt streak highestStreak')
       .sort({ createdAt: -1 })
       .skip((page - 1) * pageSize)
       .limit(pageSize)

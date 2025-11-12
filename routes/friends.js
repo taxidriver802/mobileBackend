@@ -1,13 +1,9 @@
 import express from 'express';
-import mongoose from 'mongoose';
+
 import User from '../models/User.js';
 import auth from '../middleware/auth.js';
 
 const router = express.Router();
-
-function oid(id) {
-  return new mongoose.Types.ObjectId(id);
-}
 
 // POST /api/friends/request/:targetId
 router.post('/request/:targetId', auth, async (req, res) => {
@@ -24,11 +20,16 @@ router.post('/request/:targetId', auth, async (req, res) => {
       User.findById(targetId).select('friends friendRequests'),
     ]);
 
-    if (!me || !target) return res.status(404).json({ error: 'User not found' });
+    if (!me || !target)
+      return res.status(404).json({ error: 'User not found' });
 
-    const alreadyFriends = me.friends.some(x => x.equals(target._id));
-    const alreadySent = me.friendRequests.sent.some(x => x.equals(target._id));
-    const alreadyReceived = me.friendRequests.received.some(x => x.equals(target._id));
+    const alreadyFriends = me.friends.some((x) => x.equals(target._id));
+    const alreadySent = me.friendRequests.sent.some((x) =>
+      x.equals(target._id)
+    );
+    const alreadyReceived = me.friendRequests.received.some((x) =>
+      x.equals(target._id)
+    );
 
     if (alreadyFriends) return res.json({ ok: true, status: 'friends' });
     if (alreadySent) return res.json({ ok: true, status: 'request_sent' });
@@ -64,10 +65,13 @@ router.post('/accept/:requesterId', auth, async (req, res) => {
       User.findById(meId).select('friends friendRequests'),
       User.findById(requesterId).select('friends friendRequests'),
     ]);
-    if (!me || !requester) return res.status(404).json({ error: 'User not found' });
+    if (!me || !requester)
+      return res.status(404).json({ error: 'User not found' });
 
-    if (!me.friendRequests.received.some(x => x.equals(requester._id))) {
-      return res.status(400).json({ error: 'No pending request from this user' });
+    if (!me.friendRequests.received.some((x) => x.equals(requester._id))) {
+      return res
+        .status(400)
+        .json({ error: 'No pending request from this user' });
     }
 
     me.friendRequests.received.pull(requester._id);
@@ -93,7 +97,8 @@ router.post('/decline/:requesterId', auth, async (req, res) => {
       User.findById(meId).select('friendRequests'),
       User.findById(requesterId).select('friendRequests'),
     ]);
-    if (!me || !requester) return res.status(404).json({ error: 'User not found' });
+    if (!me || !requester)
+      return res.status(404).json({ error: 'User not found' });
 
     me.friendRequests.received.pull(requester._id);
     requester.friendRequests.sent.pull(me._id);
@@ -116,7 +121,8 @@ router.delete('/:friendId', auth, async (req, res) => {
       User.findById(meId).select('friends'),
       User.findById(friendId).select('friends'),
     ]);
-    if (!me || !friend) return res.status(404).json({ error: 'User not found' });
+    if (!me || !friend)
+      return res.status(404).json({ error: 'User not found' });
 
     me.friends.pull(friend._id);
     friend.friends.pull(me._id);
