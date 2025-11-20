@@ -16,7 +16,6 @@ router.post('/register', async (req, res) => {
   }
 
   try {
-    // (optional) normalize username to enforce case-insensitivity
     const uname = username.trim();
     const existingUser = await User.findOne({ username: uname });
     if (existingUser) {
@@ -35,14 +34,12 @@ router.post('/register', async (req, res) => {
       throw new Error('JWT_SECRET is not defined in environment variables');
     }
 
-    // ✅ create JWT
     const token = jwt.sign(
       { id: saved._id.toString(), username: saved.username },
       process.env.JWT_SECRET,
       { expiresIn: '7d' }
     );
 
-    // ✅ return token + user (shape the client expects)
     return res.status(201).json({
       token,
       user: {
@@ -84,7 +81,7 @@ router.post('/login', async (req, res) => {
 router.get('/me', auth, async (req, res) => {
   try {
     const user = await User.findById(req.user.id).select(
-      '_id fullName username profilePic highestStreak createdAt updatedAt'
+      '_id fullName username profilePic streak highestStreak createdAt updatedAt'
     );
     if (!user) return res.status(404).json({ error: 'User not found' });
 
@@ -93,6 +90,7 @@ router.get('/me', auth, async (req, res) => {
       fullName: user.fullName,
       username: user.username,
       profilePic: user.profilePic || '',
+      streak: user.streak ?? 0,
       highestStreak: user.highestStreak ?? 0,
       createdAt: user.createdAt,
       updatedAt: user.updatedAt,
@@ -127,7 +125,7 @@ router.patch('/me', auth, async (req, res) => {
       { $set: update },
       { new: true, runValidators: true }
     ).select(
-      '_id fullName username profilePic highestStreak createdAt updatedAt'
+      '_id fullName username profilePic streak highestStreak createdAt updatedAt'
     );
 
     if (!updated) return res.status(404).json({ error: 'User not found' });
@@ -137,6 +135,7 @@ router.patch('/me', auth, async (req, res) => {
       fullName: updated.fullName,
       username: updated.username,
       profilePic: updated.profilePic || '',
+      streak: updated.streak ?? 0,
       highestStreak: updated.highestStreak ?? 0,
       createdAt: updated.createdAt,
       updatedAt: updated.updatedAt,

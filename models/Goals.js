@@ -7,6 +7,7 @@ const goalSchema = new mongoose.Schema(
     completed: { type: Boolean, default: false },
     user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
     frequency: { type: String, required: true },
+    startDate: { type: Date, default: null },
   },
   { timestamps: true }
 );

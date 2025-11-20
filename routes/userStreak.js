@@ -33,7 +33,7 @@ router.post('/me/streak/increment', async (req, res) => {
     if (!u) return res.sendStatus(404);
 
     if (u.streakIncreasedForDate === onDate) {
-      // already incremented today (idempotent)
+      // already incremented today
       return res.json({
         streak: u.streak,
         highestStreak: u.highestStreak,

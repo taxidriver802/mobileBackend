@@ -21,7 +21,7 @@ router.get('/', async (req, res) => {
 
 router.post('/', async (req, res) => {
   try {
-    const { title, description = '', frequency } = req.body || {};
+    const { title, description = '', frequency, startDate } = req.body || {};
     if (typeof title !== 'string' || !title.trim()) {
       return res.status(400).json({ error: 'Title is required' });
     }
@@ -31,7 +31,7 @@ router.post('/', async (req, res) => {
       description: typeof description === 'string' ? description.trim() : '',
       user: req.user.id,
       frequency: frequency,
-      // completed defaults to false via schema
+      ...(startDate ? { startDate } : {}),
     });
 
     return res.status(201).json(goal);
@@ -75,6 +75,10 @@ router.patch('/:id', async (req, res) => {
       allowed.frequency = req.body.frequency;
     }
 
+    if (typeof req.body.startDate === 'string') {
+      allowed.startDate = req.body.startDate;
+    }
+
     if (Object.keys(allowed).length === 0) {
       return res.status(400).json({ error: 'No valid fields to update' });
     }
@@ -89,7 +93,9 @@ router.patch('/:id', async (req, res) => {
       { $set: allowed },
       { new: true, runValidators: true }
     )
-      .select('_id title description completed frequency createdAt updatedAt')
+      .select(
+        '_id title description completed startDate frequency createdAt updatedAt startDate'
+      )
       .lean();
 
     if (!updated) {
