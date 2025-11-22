@@ -63,24 +63,30 @@ router.post('/me/streak/increment', async (req, res) => {
 // POST daily rollover: record yesterday result and handle reset if needed
 router.post('/me/streak/rollover', async (req, res) => {
   try {
-    const { lastDay, completedAll, today } = req.body || {};
-    // lastDay: "YYYY-MM-DD" (yesterday), completedAll: boolean, today: "YYYY-MM-DD"
+    const { lastDay, completedAll, today, dueCount, completedCount } =
+      req.body || {};
+
     if (!lastDay || typeof completedAll !== 'boolean' || !today) {
-      return res
-        .status(400)
-        .json({ error: 'lastDay, completedAll, today are required' });
+      return res.status(400).json({
+        error:
+          'lastDay, completedAll, today, dueDate, completedCount are required',
+      });
     }
 
     const u = await User.findById(req.user.id);
     if (!u) return res.sendStatus(404);
 
     // store yesterday’s completion
-    u.completionHistory.set(String(lastDay), !!completedAll);
+    u.completionHistory.set(String(lastDay), {
+      due: dueCount,
+      completed: completedCount,
+      allCompleted: !!completedAll,
+    });
 
     // reset if yesterday failed
     if (!completedAll) u.streak = 0;
 
-    // mark that we’ve done the daily check for today
+    // mark that user has finished daily check for today
     u.lastDailyCheckDate = today;
 
     await u.save();
