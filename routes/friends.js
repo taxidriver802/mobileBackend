@@ -111,6 +111,34 @@ router.post('/decline/:requesterId', auth, async (req, res) => {
   }
 });
 
+// GET /api/friends - list the current user's friends
+router.get('/', auth, async (req, res) => {
+  try {
+    const meId = req.user.id;
+
+    // Get just the friends ids for the current user
+    const me = await User.findById(meId).select('friends').lean();
+    if (!me) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    // If no friends, return empty array
+    if (!me.friends || me.friends.length === 0) {
+      return res.json({ data: [] });
+    }
+
+    // Find all users whose _id is in my friends list
+    const friends = await User.find({ _id: { $in: me.friends } })
+      .select('username fullName profilePic streak highestStreak')
+      .lean();
+
+    return res.json({ data: friends });
+  } catch (err) {
+    console.error('GET /friends error:', err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
 // DELETE /api/friends/:friendId
 router.delete('/:friendId', auth, async (req, res) => {
   try {

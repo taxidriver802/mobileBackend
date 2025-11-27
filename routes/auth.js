@@ -81,7 +81,7 @@ router.post('/login', async (req, res) => {
 router.get('/me', auth, async (req, res) => {
   try {
     const user = await User.findById(req.user.id).select(
-      '_id fullName username profilePic streak highestStreak createdAt updatedAt'
+      '_id fullName username profilePic streak highestStreak createdAt updatedAt friends'
     );
     if (!user) return res.status(404).json({ error: 'User not found' });
 
@@ -94,6 +94,7 @@ router.get('/me', auth, async (req, res) => {
       highestStreak: user.highestStreak ?? 0,
       createdAt: user.createdAt,
       updatedAt: user.updatedAt,
+      friendsList: user.friends,
     });
   } catch (err) {
     console.error('Error in /me:', err);
