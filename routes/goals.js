@@ -5,6 +5,9 @@ import auth from '../middleware/auth.js';
 
 const router = express.Router();
 
+const FREQ = ['daily', 'weekly', 'monthly'];
+const DAY_KEYS = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
+
 router.use(auth);
 
 router.get('/', async (req, res) => {
@@ -21,9 +24,30 @@ router.get('/', async (req, res) => {
 
 router.post('/', async (req, res) => {
   try {
-    const { title, description = '', frequency, startDate } = req.body || {};
+    const {
+      title,
+      description = '',
+      frequency,
+      startDate,
+      days,
+    } = req.body || {};
     if (typeof title !== 'string' || !title.trim()) {
       return res.status(400).json({ error: 'Title is required' });
+    }
+
+    let normalizedDays;
+    if (Array.isArray(days)) {
+      normalizedDays = [
+        ...new Set(
+          days
+            .map((d) => String(d).toLowerCase())
+            .filter((d) => DAY_KEYS.includes(d))
+        ),
+      ];
+
+      if (normalizedDays.length === 0) {
+        normalizedDays = undefined;
+      }
     }
 
     const goal = await Goal.create({
@@ -32,6 +56,9 @@ router.post('/', async (req, res) => {
       user: req.user.id,
       frequency: frequency,
       ...(startDate ? { startDate } : {}),
+      ...(frequency === 'daily' && normalizedDays
+        ? { days: normalizedDays }
+        : {}),
     });
 
     return res.status(201).json(goal);
@@ -44,8 +71,6 @@ router.post('/', async (req, res) => {
   }
 });
 
-const FREQ = ['daily', 'weekly', 'monthly'];
-
 router.patch('/:id', async (req, res) => {
   try {
     const { id } = req.params;
@@ -56,6 +81,7 @@ router.patch('/:id', async (req, res) => {
 
     // Whitelist & normalize
     const allowed = {};
+
     if (typeof req.body.title === 'string') {
       const v = req.body.title.trim();
       if (!v) return res.status(400).json({ error: 'Title cannot be empty' });
@@ -79,6 +105,18 @@ router.patch('/:id', async (req, res) => {
       allowed.startDate = req.body.startDate;
     }
 
+    if (Array.isArray(req.body.days)) {
+      const normalizedDays = [
+        ...new Set(
+          req.body.days
+            .map((d) => String(d).toLowerCase())
+            .filter((d) => DAY_KEYS.includes(d))
+        ),
+      ];
+
+      allowed.days = normalizedDays;
+    }
+
     if (Object.keys(allowed).length === 0) {
       return res.status(400).json({ error: 'No valid fields to update' });
     }
@@ -94,7 +132,7 @@ router.patch('/:id', async (req, res) => {
       { new: true, runValidators: true }
     )
       .select(
-        '_id title description completed startDate frequency createdAt updatedAt startDate'
+        '_id title description completed startDate frequency createdAt updatedAt startDate days'
       )
       .lean();
 

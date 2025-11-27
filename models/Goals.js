@@ -1,5 +1,7 @@
 import mongoose from 'mongoose';
 
+const DAY_KEYS = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
+
 const goalSchema = new mongoose.Schema(
   {
     title: { type: String, required: true },
@@ -8,6 +10,11 @@ const goalSchema = new mongoose.Schema(
     user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
     frequency: { type: String, required: true },
     startDate: { type: Date, default: null },
+    days: {
+      type: [String],
+      enum: DAY_KEYS,
+      default: undefined,
+    },
   },
   { timestamps: true }
 );
