@@ -24,6 +24,9 @@ const userSchema = new mongoose.Schema({
     of: completionEntrySchema,
     default: {},
   },
+  pinnedFriends: [
+    { type: Schema.Types.ObjectId, ref: 'User', index: true, max: 5 },
+  ],
   friends: [{ type: Schema.Types.ObjectId, ref: 'User', index: true }],
   friendRequests: {
     sent: [{ type: Schema.Types.ObjectId, ref: 'User', index: true }],

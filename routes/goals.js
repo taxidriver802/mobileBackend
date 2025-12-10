@@ -55,7 +55,8 @@ router.post('/', async (req, res) => {
       description: typeof description === 'string' ? description.trim() : '',
       user: req.user.id,
       frequency: frequency,
-      ...(startDate ? { startDate } : {}),
+      ...(startDate ? { startDate: new Date(startDate) } : {}),
+
       ...(frequency === 'daily' && normalizedDays
         ? { days: normalizedDays }
         : {}),
@@ -102,7 +103,7 @@ router.patch('/:id', async (req, res) => {
     }
 
     if (typeof req.body.startDate === 'string') {
-      allowed.startDate = req.body.startDate;
+      allowed.startDate = new Date(req.body.startDate);
     }
 
     if (Array.isArray(req.body.days)) {
