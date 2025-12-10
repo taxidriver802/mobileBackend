@@ -111,6 +111,51 @@ router.post('/decline/:requesterId', auth, async (req, res) => {
   }
 });
 
+// POST /api/friends/cancel/:targetId
+router.post('/cancel/:targetId', auth, async (req, res) => {
+  try {
+    const meId = req.user.id;
+    const targetId = req.params.targetId;
+
+    if (meId === targetId) {
+      return res
+        .status(400)
+        .json({ error: "Can't cancel request to yourself" });
+    }
+
+    const [me, target] = await Promise.all([
+      User.findById(meId).select('friendRequests'),
+      User.findById(targetId).select('friendRequests'),
+    ]);
+
+    if (!me || !target) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    const hadSent = me.friendRequests.sent.some((x) => x.equals(target._id));
+    const targetHadReceived = target.friendRequests.received.some((x) =>
+      x.equals(me._id)
+    );
+
+    if (!hadSent || !targetHadReceived) {
+      return res
+        .status(400)
+        .json({ error: 'No pending outgoing request to this user' });
+    }
+
+    // Remove the pending request on both sides
+    me.friendRequests.sent.pull(target._id);
+    target.friendRequests.received.pull(me._id);
+
+    await Promise.all([me.save(), target.save()]);
+
+    return res.json({ ok: true, status: 'none' });
+  } catch (err) {
+    console.error('POST /friends/cancel error:', err);
+    return res.status(500).json({ error: 'Server error' });
+  }
+});
+
 // GET /api/friends - list the current user's friends
 router.get('/', auth, async (req, res) => {
   try {
