@@ -174,7 +174,7 @@ router.get('/', auth, async (req, res) => {
 
     // Find all users whose _id is in my friends list
     const friends = await User.find({ _id: { $in: me.friends } })
-      .select('username fullName profilePic streak highestStreak')
+      .select('username fullName profilePic streak highestStreak createdAt')
       .lean();
 
     return res.json({ data: friends });
