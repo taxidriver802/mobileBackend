@@ -4,6 +4,10 @@ import dotenv from 'dotenv';
 import mongoose from 'mongoose';
 import routes from './routes/index.js';
 
+import http from 'http';
+import { Server as SocketIOServer } from 'socket.io';
+import socketAuth from './middleware/socketAuth.js';
+
 dotenv.config();
 
 const DB_NAME = process.env.MONGO_DB_NAME || 'Mobile';
@@ -69,8 +73,38 @@ app.get('/', (req, res) => {
   `);
 });
 
+const server = http.createServer(app);
+
+const io = new SocketIOServer(server, {
+  cors: { origin: '*', methods: ['GET', 'POST'] },
+});
+
+// ✅ authenticate sockets
+io.use(socketAuth);
+
+io.on('connection', (socket) => {
+  socket.join(`user:${socket.userId}`);
+
+  socket.on('conversation:join', ({ conversationId }) => {
+    socket.join(`conv:${conversationId}`);
+  });
+
+  socket.on('message:send', ({ conversationId, text, clientId }) => {
+    const message = {
+      _id: `temp_${Date.now()}`,
+      conversationId,
+      senderId: socket.userId,
+      text,
+      createdAt: new Date().toISOString(),
+    };
+
+    socket.emit('message:ack', { clientId, message });
+    io.to(`conv:${conversationId}`).emit('message:new', { message });
+  });
+});
+
 const PORT = process.env.PORT || 5001;
 const HOST = process.env.HOST || '0.0.0.0';
-app.listen(PORT, HOST, () =>
+server.listen(PORT, HOST, () =>
   console.log(`Server running on http://${HOST}:${PORT}`)
 );
